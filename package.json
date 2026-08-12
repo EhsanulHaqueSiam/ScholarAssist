@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Config-driven scholarship application assistant. Fills, you review, you submit.",
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "bin": { "scholar": "./dist/index.js" },
   "engines": { "node": ">=20" },
   "scripts": {
