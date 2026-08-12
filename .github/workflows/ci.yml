@@ -1,0 +1,39 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm exec playwright install chromium --with-deps
+      - run: pnpm test
+      - name: Lint all configs (schema + purity + PII)
+        run: |
+          shopt -s globstar nullglob
+          files=(configs/**/*.yaml configs/**/*.yml)
+          if [ ${#files[@]} -gt 0 ]; then pnpm dev lint "${files[@]}"; fi
+      - name: Build site
+        run: node scripts/build-site.mjs
+
+  # Secret/PII scan over the whole tree: catches what the config lint cannot
+  # (committed sessions, tokens, canary values). Blocking, not advisory.
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

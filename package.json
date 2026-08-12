@@ -1,0 +1,25 @@
+{
+  "name": "scholar",
+  "version": "0.1.0",
+  "description": "Config-driven scholarship application assistant. Fills, you review, you submit.",
+  "type": "module",
+  "bin": { "scholar": "./dist/index.js" },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "arktype": "^2.1.20",
+    "commander": "^13.1.0",
+    "playwright": "^1.54.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,77 @@
+# McCall MacBain Scholarships (McGill) — Fall 2027 admission cycle.
+# Portal is a Technolutions Slate instance. The application form itself lives
+# behind the account; record the apply flow with `scholar config record` after
+# creating your account. Slate emails a PIN to activate — that step is yours.
+# Structure captured 2026-08-12 from the live register page.
+schema_version: 1
+site:
+  id: mccall-macbain
+  name: McCall MacBain Scholarships
+  match:
+    - "https://apply.mccallmacbainscholars.org/**"
+    - "https://mccallmacbainscholars.org/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.email:
+    locator:
+      primary: { css: "#email" }
+      fallbacks: [{ label: "Email Courriel" }]
+    autocomplete: email
+  applicant.given_name:
+    locator:
+      primary: { css: "#first" }
+      fallbacks: [{ label: "First Name Prénom" }]
+    autocomplete: given-name
+  applicant.family_name:
+    locator:
+      primary: { css: "#last" }
+      fallbacks: [{ label: "Last Name Nom de famille" }]
+    autocomplete: family-name
+  # Slate splits birthdate into three selects; profile carries the parts.
+  applicant.dob_month:
+    locator: { primary: { css: "#birthdate_m" } }
+    kind: select
+  applicant.dob_day:
+    locator: { primary: { css: "#birthdate_d" } }
+    kind: select
+  applicant.dob_year:
+    locator: { primary: { css: "#birthdate_y" } }
+    kind: select
+
+flows:
+  # Creates the Slate account that unlocks the application. The Continue
+  # click is treated as a submission: you review and confirm it.
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://apply.mccallmacbainscholars.org/account/register"
+          - action: fill_fields
+            fields:
+              - applicant.email
+              - applicant.given_name
+              - applicant.family_name
+              - applicant.dob_month
+              - applicant.dob_day
+              - applicant.dob_year
+        advance:
+          target:
+            primary: { role: button, name: "Continue / Continuer" }
+            fallbacks: [{ css: "button[type=submit]" }]
+          submit: true
+
+  # The form behind login. Log in first (Slate emails a PIN), then extend
+  # this flow with `scholar config record https://apply.mccallmacbainscholars.org/apply`.
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://apply.mccallmacbainscholars.org/apply/"
+          - action: wait
+            for: { locator: { text: "McCall MacBain Scholarship Application" } }

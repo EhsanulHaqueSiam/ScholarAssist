@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body { background: #000; color: #fff; font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; width: 380px; margin: 0; padding: 12px; }
+  h1 { font-size: 13px; margin: 0 0 8px; }
+  button { background: #e8b64c; color: #000; border: 0; padding: 6px 12px; font-weight: 600; cursor: pointer; }
+  button.secondary { background: #17191d; color: #fff; }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .field { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 0; border-bottom: 1px solid #17191d; }
+  .field .desc { color: #9ba3ae; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .field input { background: #0a0b0d; color: #fff; border: 1px solid #2a2e35; padding: 2px 6px; font: 12px ui-monospace, monospace; }
+  #status { color: #9ba3ae; margin: 6px 0; }
+  .note { color: #9ba3ae; font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>ScholarAssist Recorder</h1>
+<div class="row">
+  <button id="record">Record this page</button>
+  <button id="export" class="secondary">Export YAML</button>
+  <button id="clear" class="secondary">Clear</button>
+</div>
+<div id="status">Not recording.</div>
+<div id="fields"></div>
+<p class="note">Captures where you type, never what you type. Exported configs contain selectors and profile key names only.</p>
+<script src="popup.js"></script>
+</body>
+</html>

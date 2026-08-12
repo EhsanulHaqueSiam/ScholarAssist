@@ -1,0 +1,71 @@
+# Commonwealth Scholarships (UK) — CSC Central portal.
+# Registration inputs carry session-randomized name attributes, so LABELS are
+# the only durable locators here (do not "improve" these to CSS).
+# Commonwealth Master's/PhD requires nomination via a national agency
+# (Bangladesh: UGC) — the portal application is one half of the process.
+# Application form is behind login; record it after registering.
+# Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: commonwealth-csc
+  name: Commonwealth Scholarships (CSC Central)
+  match:
+    - "https://portal.csccentralonline.org.uk/**"
+    - "https://cscuk.fcdo.gov.uk/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.given_name:
+    locator:
+      primary: { label: "Given Names (as in your passport or official ID)" }
+    autocomplete: given-name
+  applicant.family_name:
+    locator:
+      primary: { label: "Last Name (as in your passport or official ID)" }
+    autocomplete: family-name
+  applicant.email:
+    locator:
+      primary: { label: "Email ID" }
+    autocomplete: email
+  applicant.recovery_email:
+    locator:
+      primary: { label: "Email address to be used for passcode reset" }
+
+flows:
+  # SPA: land on the portal, open the New User panel, fill, then you review
+  # and confirm VERIFY & SUBMIT (a passcode lands in your inbox).
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://portal.csccentralonline.org.uk/application"
+          - action: wait
+            for: { locator: { text: "New User" } }
+          - action: click
+            target:
+              primary: { role: link, name: "New User" }
+          - action: wait
+            for: { locator: { label: "Email ID" } }
+          - action: fill_fields
+            fields:
+              - applicant.given_name
+              - applicant.family_name
+              - applicant.email
+              - applicant.recovery_email
+        advance:
+          target:
+            primary: { role: button, name: "VERIFY & SUBMIT" }
+          submit: true
+
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://portal.csccentralonline.org.uk/application"
+          - action: wait
+            for: { locator: { text: "Commonwealth Scholarships" } }

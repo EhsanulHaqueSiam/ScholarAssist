@@ -1,0 +1,63 @@
+# Knight-Hennessy Scholars (Stanford) — Technolutions Slate, standard
+# register structure (verified identical to McCall MacBain/Schwarzman/IIE).
+# 2027 cohort deadline: 6 Oct 2026, 13:00 PT. Requires a separate Stanford
+# graduate program application. Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: knight-hennessy
+  name: Knight-Hennessy Scholars
+  match:
+    - "https://apply.knight-hennessy.stanford.edu/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.email:
+    locator: { primary: { css: "#email" } }
+    autocomplete: email
+  applicant.given_name:
+    locator: { primary: { css: "#first" } }
+    autocomplete: given-name
+  applicant.family_name:
+    locator: { primary: { css: "#last" } }
+    autocomplete: family-name
+  applicant.dob_month:
+    locator: { primary: { css: "#birthdate_m" } }
+    kind: select
+  applicant.dob_day:
+    locator: { primary: { css: "#birthdate_d" } }
+    kind: select
+  applicant.dob_year:
+    locator: { primary: { css: "#birthdate_y" } }
+    kind: select
+
+flows:
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://apply.knight-hennessy.stanford.edu/account/register"
+          - action: fill_fields
+            fields:
+              - applicant.email
+              - applicant.given_name
+              - applicant.family_name
+              - applicant.dob_month
+              - applicant.dob_day
+              - applicant.dob_year
+        advance:
+          target:
+            primary: { css: "button[type=submit]" }
+          submit: true
+
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://apply.knight-hennessy.stanford.edu/apply/"
+          - action: wait
+            for: { locator: { text: "Log in" } }

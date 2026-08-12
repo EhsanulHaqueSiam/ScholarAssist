@@ -1,0 +1,49 @@
+# Stipendium Hungaricum (Hungary, fully funded, Bangladeshi-eligible).
+# Portal is a DreamApply instance; auth goes through the shared
+# id.dreamapply.com service (email -> one-time link). The application form is
+# behind that login: extend the apply flow with `scholar config record` after
+# registering. Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: stipendium-hungaricum
+  name: Stipendium Hungaricum
+  match:
+    - "https://apply.stipendiumhungaricum.hu/**"
+    - "https://id.dreamapply.com/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.email:
+    locator:
+      primary: { css: "#email2" }
+      fallbacks: [{ label: "Please type your email address to register:" }]
+    autocomplete: email
+
+flows:
+  # Registers via the DreamApply ID service; a one-time link lands in your
+  # inbox (that step is yours). The Register click is the submission you confirm.
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://apply.stipendiumhungaricum.hu/auth/dreamid"
+          - action: fill_fields
+            fields: [applicant.email]
+        advance:
+          target:
+            primary: { role: button, name: "Register" }
+          submit: true
+
+  # Entry point for the logged-in application; record the rest once inside.
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://apply.stipendiumhungaricum.hu/"
+          - action: wait
+            for: { locator: { text: "Find programmes" } }

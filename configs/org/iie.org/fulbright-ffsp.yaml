@@ -1,0 +1,64 @@
+# Fulbright Foreign Student Program — IIE application (Technolutions Slate,
+# same register structure as McCall MacBain/Schwarzman). Bangladeshi
+# applicants apply via the US Embassy Dhaka call, which points at this IIE
+# portal (program key ffsp<year>). Country deadlines vary by cycle.
+# Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: fulbright-ffsp
+  name: Fulbright Foreign Student Program (IIE)
+  match:
+    - "https://apply.iie.org/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.email:
+    locator: { primary: { css: "#email" } }
+    autocomplete: email
+  applicant.given_name:
+    locator: { primary: { css: "#first" } }
+    autocomplete: given-name
+  applicant.family_name:
+    locator: { primary: { css: "#last" } }
+    autocomplete: family-name
+  applicant.dob_month:
+    locator: { primary: { css: "#birthdate_m" } }
+    kind: select
+  applicant.dob_day:
+    locator: { primary: { css: "#birthdate_d" } }
+    kind: select
+  applicant.dob_year:
+    locator: { primary: { css: "#birthdate_y" } }
+    kind: select
+
+flows:
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://apply.iie.org/account/register"
+          - action: fill_fields
+            fields:
+              - applicant.email
+              - applicant.given_name
+              - applicant.family_name
+              - applicant.dob_month
+              - applicant.dob_day
+              - applicant.dob_year
+        advance:
+          target:
+            primary: { css: "button[type=submit]" }
+          submit: true
+
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://apply.iie.org/ffsp2027"
+          - action: wait
+            for: { locator: { text: "Application Management" } }

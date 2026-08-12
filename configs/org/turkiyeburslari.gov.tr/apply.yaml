@@ -1,0 +1,85 @@
+# Türkiye Bursları (Türkiye Scholarships, fully funded, Bangladeshi-eligible).
+# TBBS portal registration is public; the application itself is behind login.
+# Passwords and the secret question are deliberately NOT config fields: you
+# type those yourself at the review pause. Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: turkiye-burslari
+  name: "Türkiye Bursları"
+  match:
+    - "https://tbbs.turkiyeburslari.gov.tr/**"
+    - "https://www.turkiyeburslari.gov.tr/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.given_name:
+    locator:
+      primary: { css: "#Name" }
+      fallbacks: [{ label: "Name" }]
+    autocomplete: given-name
+  applicant.middle_name:
+    locator:
+      primary: { css: "#SecondName" }
+      fallbacks: [{ label: "Middle Name" }]
+  applicant.family_name:
+    locator:
+      primary: { css: "#Surname" }
+      fallbacks: [{ label: "Surname" }]
+    autocomplete: family-name
+  applicant.sex:
+    locator:
+      primary: { css: "#Sex" }
+    kind: select
+  applicant.dob:
+    locator:
+      primary: { css: "#Birthdate" }
+    autocomplete: bday
+  applicant.nationality:
+    locator:
+      primary: { css: "#NationalityId" }
+    kind: select
+  applicant.email:
+    locator:
+      primary: { css: "#Email1" }
+      fallbacks: [{ label: "E-mail" }]
+    autocomplete: email
+
+flows:
+  # Fills the public registration form except credentials; the run pauses at
+  # the review gate so you can type password + secret question before
+  # confirming Save.
+  register:
+    pages:
+      - id: register
+        steps:
+          - action: navigate
+            url: "https://tbbs.turkiyeburslari.gov.tr/auth/register"
+          - action: fill_fields
+            fields:
+              - applicant.given_name
+              - applicant.family_name
+              - applicant.sex
+              - applicant.dob
+              - applicant.nationality
+              - applicant.email
+          - action: fill
+            target: { primary: { css: "#ReEmail" }, fallbacks: [{ label: "E-mail (again)" }] }
+            value: "{{ profile.applicant.email }}"
+        advance:
+          target:
+            primary: { css: "#LoginButton2" }
+            fallbacks: [{ role: button, name: "Save" }]
+          submit: true
+
+  # Post-login entry; record the real application with `scholar config record`.
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://tbbs.turkiyeburslari.gov.tr/"
+          - action: wait
+            for: { locator: { text: "Scholarship Search" } }

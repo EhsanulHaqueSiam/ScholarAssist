@@ -1,0 +1,34 @@
+schema_version: 1
+site:
+  id: testsite
+  name: Local test fixture
+  match: ["file://**"]
+
+fields:
+  applicant.given_name:
+    locator: { primary: { label: "First name" } }
+    autocomplete: given-name
+  applicant.email:
+    locator: { primary: { label: "Email" } }
+    autocomplete: email
+  edu.gpa:
+    locator:
+      primary: { label: "GPA" }              # intentionally wrong: page says "Grade point average"
+      fallbacks: [{ css: "#gpa_x9" }]
+  essay.why:
+    locator: { primary: { label: "Why do you deserve this?" } }
+    kind: freeform
+    max_chars: 2000
+
+flows:
+  apply:
+    inputs:
+      - { name: form_url, type: string, required: true }
+    pages:
+      - id: main
+        steps:
+          - { action: navigate, url: "{{ inputs.form_url }}" }
+          - { action: fill_fields, fields: [applicant.given_name, applicant.email, edu.gpa, essay.why] }
+        advance:
+          target: { primary: { role: button, name: "Submit application" } }
+          submit: true

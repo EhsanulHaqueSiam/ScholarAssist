@@ -1,0 +1,41 @@
+# Chevening Scholarships (UK) — 2027/28 cycle open 4 Aug to 6 Oct 2026,
+# 11:00 UTC. Current portal is ASAMS (asams.chevening.org); the old
+# apply.chevening.org no longer resolves and chevening.tal.net is retired.
+# Entry wizard: choose award by country, then account creation. The full
+# application (four essays, 2,800h work-history table, three UK course
+# choices) is behind login — record it with `scholar config record`.
+# Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: chevening
+  name: Chevening Scholarships
+  match:
+    - "https://asams.chevening.org/**"
+    - "https://www.chevening.org/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+fields:
+  applicant.country:
+    locator:
+      primary: { css: "#input-autocomplete" }
+    # custom autocomplete: after filling, pick the suggestion matching your country
+
+flows:
+  # Starts the award chooser. The country widget is a custom autocomplete —
+  # in step mode you confirm the highlighted suggestion before Continue.
+  apply:
+    pages:
+      - id: choose-award
+        steps:
+          - action: navigate
+            url: "https://asams.chevening.org/apply"
+          - action: wait
+            for: { locator: { text: "Choose an award" } }
+          - action: fill_fields
+            fields: [applicant.country]
+        advance:
+          target:
+            primary: { role: button, name: "Continue" }

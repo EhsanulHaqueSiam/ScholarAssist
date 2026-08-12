@@ -1,0 +1,11 @@
+node_modules/
+dist/
+site/
+*.log
+.DS_Store
+
+# Never commit anything that could hold personal data or sessions
+profile.yaml
+*.session.json
+runs/
+.impeccable/

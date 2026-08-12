@@ -1,0 +1,35 @@
+# Manaaki New Zealand Scholarships. WARNING: Bangladesh is NOT on the
+# eligible-country list as of 2026-08 (Asia list: Cambodia, Indonesia, Lao
+# PDR, Malaysia, Nepal, Philippines, Thailand, Timor-Leste, Vietnam) — this
+# config is kept for eligible-country users. Applicant portal is a Microsoft
+# Power Apps portal; an eligibility check gates the application, and sign-in
+# is required beyond it. Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: manaaki-nz
+  name: Manaaki New Zealand Scholarships
+  match:
+    - "https://mnzspapplicantportal.powerappsportals.com/**"
+    - "https://www.nzscholarships.govt.nz/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+flows:
+  # Public eligibility checker is the entry step; sign-in (Microsoft-hosted,
+  # human step) unlocks the application. Record the rest once inside.
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://mnzspapplicantportal.powerappsportals.com/"
+          - action: wait
+            for: { locator: { text: "Applicant Portal" } }
+          - action: click
+            target:
+              primary: { role: button, name: "Check eligibility" }
+              fallbacks: [{ css: "#eligibilityButtonInner" }]
+          - action: wait
+            for: { locator: { text: "Eligibility" } }

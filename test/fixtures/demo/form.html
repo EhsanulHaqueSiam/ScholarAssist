@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Example Scholarship Portal (demo)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { background: #f4f5f7; color: #1a1d21; font: 15px/1.6 system-ui, sans-serif; margin: 0; }
+  header { background: #12233d; color: #fff; padding: 18px 0; }
+  header .wrap { display: flex; align-items: baseline; gap: 12px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+  header strong { font-size: 18px; }
+  header span { color: #9fb3cf; font-size: 13px; }
+  main .wrap { background: #fff; margin-top: 28px; margin-bottom: 40px; padding: 28px 32px 32px; border: 1px solid #dfe3e8; border-radius: 6px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.sub { color: #5a6472; margin: 0 0 24px; font-size: 13px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 16px 0 4px; }
+  input, textarea, select { width: 100%; padding: 9px 10px; border: 1px solid #c4cad2; border-radius: 4px; font: inherit; background: #fff; }
+  input:focus, textarea:focus { outline: 2px solid #2f6fd1; border-color: #2f6fd1; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  textarea { min-height: 110px; resize: vertical; }
+  .count { color: #5a6472; font-size: 12px; text-align: right; margin-top: 2px; }
+  button { margin-top: 24px; background: #12233d; color: #fff; border: 0; padding: 12px 22px; border-radius: 4px; font: 600 15px system-ui; cursor: pointer; }
+  .banner { display: none; margin-top: 16px; background: #fff7e0; border: 1px solid #e6c96a; border-radius: 4px; padding: 12px 14px; font-size: 14px; }
+  .banner.show { display: block; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><strong>Example Scholarship Portal</strong><span>demo — not a real sponsor</span></div></header>
+<main><div class="wrap">
+  <h1>Merit Scholarship Application</h1>
+  <p class="sub">All fields are required. Applications close soon.</p>
+  <form onsubmit="event.preventDefault()">
+    <div class="row">
+      <div><label for="fn">First name</label><input id="fn" autocomplete="given-name"></div>
+      <div><label for="ln">Last name</label><input id="ln" autocomplete="family-name"></div>
+    </div>
+    <div class="row">
+      <div><label for="em">Email address</label><input id="em" type="email" autocomplete="email"></div>
+      <div><label for="cn">Country of citizenship</label><input id="cn" autocomplete="country-name"></div>
+    </div>
+    <div class="row">
+      <div><label for="uni">Current institution</label><input id="uni"></div>
+      <div><label for="gpa">Cumulative GPA</label><input id="gpa"></div>
+    </div>
+    <label for="why">Why do you deserve this scholarship? (max 2,000 characters)</label>
+    <textarea id="why" maxlength="2000"></textarea>
+    <div class="count" id="count">0 / 2000</div>
+    <button type="submit">Submit application</button>
+    <div class="banner" id="gate">⏸&nbsp; <b>scholar</b> stopped here — review the filled values in your terminal and type <code>submit</code> to continue. Nothing is sent without you.</div>
+  </form>
+</div></main>
+<script>
+  const why = document.getElementById("why");
+  why.addEventListener("input", () => document.getElementById("count").textContent = why.value.length + " / 2000");
+</script>
+</body>
+</html>

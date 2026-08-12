@@ -1,0 +1,31 @@
+# DAAD (Germany) — EPOS / Helmut-Schmidt and other funding programmes.
+# The My DAAD portal sits behind Azure B2C SSO ("DAAD-ID"); account creation
+# and sign-in are interactive SSO flows you complete yourself in the headed
+# browser. This config covers the public entry points only; record the
+# post-login application with `scholar config record`. Note: many EPOS
+# programmes are applied for via the UNIVERSITY, not the portal — check the
+# specific course page. Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: daad
+  name: DAAD funding programmes
+  match:
+    - "https://portal.daad.de/**"
+    - "https://www.daad.de/**"
+    - "https://mydaad.b2clogin.com/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+requires: [login]
+
+flows:
+  # Opens the portal; you sign in / register with your DAAD-ID (SSO, human
+  # step), after which the funding application area is available to record.
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://portal.daad.de/irj/portal"
+          - action: wait
+            for: { locator: { text: "Sign in with DAAD-ID" } }

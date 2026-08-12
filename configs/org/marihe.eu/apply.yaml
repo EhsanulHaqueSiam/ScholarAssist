@@ -1,0 +1,28 @@
+# Erasmus Mundus MARIHE (Research and Innovation in Higher Education) —
+# Intake 2027, deadline 21 Sep 2026, 10:00 CEST. Application runs on
+# Evalato at 11547.evalato.com; the "Start the application" control is a
+# JS-driven registration widget, so the form is recorded rather than
+# hand-authored — extend with `scholar config record https://11547.evalato.com`.
+# Structure captured 2026-08-12.
+schema_version: 1
+site:
+  id: marihe
+  name: "Erasmus Mundus MARIHE (Intake 2027)"
+  match:
+    - "https://11547.evalato.com/**"
+    - "https://www.marihe.eu/**"
+  maintainer: "@EhsanulHaqueSiam"
+  last_verified: 2026-08-12
+
+flows:
+  apply:
+    pages:
+      - id: entry
+        steps:
+          - action: navigate
+            url: "https://11547.evalato.com/"
+          - action: wait
+            for: { locator: { text: "MARIHE Intake 2027" } }
+          - action: click
+            target:
+              primary: { text: "Start the application" }
