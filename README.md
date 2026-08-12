@@ -75,6 +75,19 @@ against your profile, and an inline interview for whatever's missing — typed
 once, saved to your profile, never asked again. No YAML editing, no hopping
 between a run that died and an editor.
 
+Everything personal lives in one folder, one shape (`~/.config/scholar/`):
+
+```
+profile.yaml   what gets TYPED into forms (canonical keys; runs fill only from here)
+docs/          what gets UPLOADED — `scholar docs add cv.pdf --as cv` binds documents.cv
+cv/            CV sources + per-program format specs (1-page/no-photo/Europass rules vary!)
+essays/        long-form essay masters; the fitted, per-portal version goes into essay.* keys
+```
+
+An agent may draft `profile.yaml` from your public portfolio (`scholar profile
+import <url>`, or ask your agent) — always as a reviewable draft with TODOs;
+portals are never filled from anything you haven't confirmed.
+
 Every run writes proof to `~/.local/state/scholar/runs/<timestamp>/`: per-page screenshots, an append-only `audit.jsonl` recording **where every value came from**, and on submit a confirmation screenshot + URL — your receipt if a sponsor ever disputes it.
 
 ### Track your deadlines

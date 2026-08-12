@@ -69,4 +69,13 @@ the questions, never answer them. Point the human at:
   scholar docs add <file> --as cv     — register CV/transcript/etc for uploads
   scholar docs list                   — check registered files still exist
   scholar profile import <url>        — human-confirmed import from their site
+
+Profile folder layout (~/.config/scholar/) — keep everything in this shape:
+  profile.yaml  typed form values   docs/  uploads (documents.* keys)
+  cv/           CV sources + specs  essays/ essay masters (fitted → essay.*)
+
+If the human asks you to draft their profile or CV from their PUBLIC pages:
+extract only stated facts, write them as a DRAFT with TODO markers on
+anything you could not verify (passport name split, DOB, phone), and tell
+the human to review every value. Never fill a portal from an unreviewed draft.
 `;

@@ -78,23 +78,48 @@ export function expandHome(p: string): string {
 
 const PROFILE_TEMPLATE = `# scholar profile — this file never leaves your machine.
 # Every value here is YOURS; the tool only transports it, never invents it.
+#
+# Folder layout (everything follows this):
+#   profile.yaml   what gets TYPED into forms (this file, canonical keys)
+#   docs/          what gets UPLOADED (\`scholar docs add\` binds documents.*)
+#   cv/            CV sources + per-program format specs
+#   essays/        long-form essay masters; fitted versions go into essay.* keys
 applicant:
-  given_name: ""
-  family_name: ""
+  full_name: ""
+  given_name: ""             # EXACTLY as on your passport
+  family_name: ""            # EXACTLY as on your passport
   email: ""
-  phone: ""
+  phone: ""                  # with country code
   country: ""
+  city: ""
+  # date_of_birth: ""        # YYYY-MM-DD as on passport
 edu:
   institution: ""
-  gpa: ""
-  graduation_year: ""
+  degree: ""
   major: ""
+  gpa: ""
+  gpa_scale: ""
+  graduation_year: ""
+  # history:                 # earlier education, newest first
+  #   - { level: "", institution: "", years: "" }
+links:
+  website: ""
+  github: ""
+  linkedin: ""
+# Reference data for CVs and application answers (portals are always filled
+# from the scalar keys above):
+# experience:
+#   - { role: "", org: "", period: "", summary: "" }
+# research:
+#   publications:
+#     - { title: "", venue: "", status: "", year: "" }
+# awards: []
 essay:
   # Your own writing only. Add one key per reusable essay.
   # why_deserve: |
   #   ...
 documents:
-  # transcript: ~/Documents/transcript.pdf
+  # cv: ~/.config/scholar/docs/cv.pdf     (use: scholar docs add <file> --as cv)
 `;
 
 export function initProfile(profilePath = PROFILE_PATH): boolean {
