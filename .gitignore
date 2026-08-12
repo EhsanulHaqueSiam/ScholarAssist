@@ -5,7 +5,8 @@ site/
 .DS_Store
 
 # Never commit anything that could hold personal data or sessions
-profile.yaml
+# (test/fixtures/profile.yaml is fictional and deliberately committed)
+/profile.yaml
 *.session.json
 runs/
 .impeccable/

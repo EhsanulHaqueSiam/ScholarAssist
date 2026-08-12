@@ -1,0 +1,8 @@
+applicant:
+  given_name: Ada
+  family_name: Lovelace
+  email: ada@example.org
+edu:
+  gpa: "3.85"
+essay:
+  why: I built things and want to keep building them.
