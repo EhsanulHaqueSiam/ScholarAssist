@@ -10,7 +10,8 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "test": "tsx --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify": "pnpm typecheck && pnpm test && pnpm dev lint configs/org/*/*.yaml && node scripts/build-site.mjs"
   },
   "dependencies": {
     "arktype": "^2.1.20",

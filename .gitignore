@@ -9,4 +9,5 @@ site/
 /profile.yaml
 *.session.json
 runs/
+evidence/
 .impeccable/
