@@ -2,6 +2,8 @@
 
 Compiled 12 August 2026 from official sources. Ordered by deadline, soonest first. VERIFIED = current-cycle dates confirmed on the official site today; UNVERIFIED = not yet published by the official body (never guessed from old cycles). Portal structures marked with ⚙ have a ScholarAssist config in `configs/`.
 
+**Per-scholarship document lists, referee mechanics, and disqualifying gotchas: [`APPLICATION-REQUIREMENTS.md`](APPLICATION-REQUIREMENTS.md).**
+
 ## Act now
 
 **McCall MacBain (McGill) closes in 7 days: 19 Aug 2026, 16:00 ET** (international applicants; Canada/US applicants get 23 Sep). ⚙ Master's + second-entry professional degrees, Canada; full tuition + CAD 2,300/month stipend. Eligibility: bachelor's by Aug 2027, or earned Jan 2021+, or 30 or younger on 1 Jan 2026. Trap: a separate McGill admission application is also required. [Portal](https://apply.mccallmacbainscholars.org/apply)

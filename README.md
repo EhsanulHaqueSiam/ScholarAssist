@@ -86,7 +86,7 @@ scholar track list             # sorted by time-left, DST-proof
 scholar track set <id> blocked_on_human --notes "waiting on recommender"
 ```
 
-Deadlines are refused without an explicit UTC offset (a naive deadline is a missed deadline), and duplicate site + award + cycle entries are refused (duplicates get applications disqualified). See [`UPCOMING-SCHOLARSHIPS.md`](UPCOMING-SCHOLARSHIPS.md) for the researched 2027-intake calendar for Bangladeshi students.
+Deadlines are refused without an explicit UTC offset (a naive deadline is a missed deadline), and duplicate site + award + cycle entries are refused (duplicates get applications disqualified). See [`UPCOMING-SCHOLARSHIPS.md`](UPCOMING-SCHOLARSHIPS.md) for the researched 2027-intake calendar for Bangladeshi students, and [`APPLICATION-REQUIREMENTS.md`](APPLICATION-REQUIREMENTS.md) for each portal's document lists, referee deadlines, and disqualifying gotchas.
 
 ## Site configs
 
