@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parse } from "yaml";
+import { parse, parseDocument } from "yaml";
 
 // ponytail: plaintext YAML at 0600, same posture as ~/.aws/credentials.
 // Upgrade path when the registry ships: AES-256-GCM at rest, key in the OS
@@ -58,6 +58,18 @@ export function resolveTemplate(
     throw new BlockedError(`Missing flow input \`${m[2]}\`. Pass it with --input ${m[2]}=...`);
   }
   return { value: String(inputs[m[2]]), source: `inputs.${m[2]}` };
+}
+
+// Write one key into the profile file, preserving comments and everything
+// else. Used by the pre-flight interview, `docs add`, and `profile import` —
+// always with a value the human typed or confirmed.
+export function setProfileKey(dotPath: string, value: string, profilePath = PROFILE_PATH): void {
+  const doc = fs.existsSync(profilePath)
+    ? parseDocument(fs.readFileSync(profilePath, "utf8"))
+    : parseDocument("{}");
+  doc.setIn(dotPath.split("."), value);
+  fs.mkdirSync(path.dirname(profilePath), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(profilePath, doc.toString(), { mode: 0o600 });
 }
 
 export function expandHome(p: string): string {

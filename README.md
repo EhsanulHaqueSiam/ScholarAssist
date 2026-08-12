@@ -56,16 +56,24 @@ Every locator resolves through a **cost ladder** — each rung more expensive th
 
 ```sh
 pnpm install
-pnpm exec playwright install chromium
+pnpm dev start                 # guided: installs the browser, asks your basics
+                               # inline, then shows a demo fill (fictional data)
 
-pnpm dev profile init          # create ~/.config/scholar/profile.yaml, fill it in
-pnpm dev configs list          # 12 real portal configs ship in configs/
+pnpm dev docs add ~/cv.pdf --as cv           # register documents once; uploads find them
+pnpm dev profile import https://your.site    # propose values from your own page — you
+                                             # confirm each one before it saves
+pnpm dev run                                 # no args: pick a portal from a list
 
 pnpm dev run chevening --flow apply              # step mode: confirm each page
-pnpm dev run mccall-macbain --flow register      # fills the form, waits for your confirm
 pnpm dev run <site> --flow apply --mode auto     # auto-advance pages — submit still asks
 pnpm dev run <site> --flow apply --dry-run       # fill + review table, never submits
+pnpm dev doctor                                  # env check when something's off
 ```
+
+Every run **pre-flights** its needs on one screen: fields the site wants, ✓/✗
+against your profile, and an inline interview for whatever's missing — typed
+once, saved to your profile, never asked again. No YAML editing, no hopping
+between a run that died and an editor.
 
 Every run writes proof to `~/.local/state/scholar/runs/<timestamp>/`: per-page screenshots, an append-only `audit.jsonl` recording **where every value came from**, and on submit a confirmation screenshot + URL — your receipt if a sponsor ever disputes it.
 
@@ -73,7 +81,7 @@ Every run writes proof to `~/.local/state/scholar/runs/<timestamp>/`: per-page s
 
 ```sh
 scholar track add chevening --award "Chevening 2027/28" \
-  --deadline 2026-10-06T11:00:00Z --tz "11:00 UTC"
+  --deadline "6 Oct 2026 11:00 UTC"
 scholar track list             # sorted by time-left, DST-proof
 scholar track set <id> blocked_on_human --notes "waiting on recommender"
 ```

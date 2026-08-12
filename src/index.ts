@@ -1,11 +1,17 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
+import { stdin, stdout } from "node:process";
+import { createInterface } from "node:readline/promises";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { chromium } from "playwright";
 import { parse } from "yaml";
 import { lintConfig } from "./lint.js";
-import { BlockedError, PROFILE_PATH, initProfile, loadProfile } from "./profile.js";
+import { BlockedError, PROFILE_PATH, initProfile, loadProfile, resolveKey, setProfileKey } from "./profile.js";
 import { runFlow, type Mode } from "./run.js";
 import { recordConfig } from "./record.js";
 import { importRecording } from "./importrec.js";
@@ -13,13 +19,43 @@ import { promotePatches } from "./promote.js";
 import { claudeAvailable } from "./repair.js";
 import { CORE_GUIDE } from "./skills.js";
 import { Engine } from "./engine.js";
-import { TRACK_PATH, addApp, formatList, loadApps, saveApps, setState, type AppState } from "./track.js";
+import { DOCS_DIR, SIZE_WARN_MB, addDoc, listDocs } from "./docs.js";
+import { extractCandidates, fetchPageText, llmCandidates, type Candidate } from "./importweb.js";
+import { TRACK_PATH, addApp, formatList, loadApps, parseDeadlineInput, saveApps, setState, timeLeft, type AppState } from "./track.js";
 import type { SiteConfig } from "./schema.js";
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const CONFIG_DIRS = [
   path.join(process.cwd(), "configs"),
   path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"), "scholar", "configs"),
 ];
+
+// One interactive question on the CLI's own stdin (commands only — runFlow
+// has its own `ask` with the test hook).
+async function ask(question: string): Promise<string> {
+  const rl = createInterface({ input: stdin, output: stdout });
+  const answer = await rl.question(question);
+  rl.close();
+  return answer.trim();
+}
+
+// All valid configs across CONFIG_DIRS, deduped by site id (the same repo can
+// be reachable via cwd AND a ~/.config symlink — count it once).
+function allConfigs(): { config: SiteConfig; file: string }[] {
+  const byId = new Map<string, { config: SiteConfig; file: string }>();
+  for (const dir of CONFIG_DIRS) {
+    for (const file of walkYaml(dir)) {
+      try {
+        const config = loadConfigFile(file);
+        if (!byId.has(config.site.id)) byId.set(config.site.id, { config, file });
+      } catch {
+        // configs list reports invalid files; skip here
+      }
+    }
+  }
+  return [...byId.values()];
+}
 
 function* walkYaml(dir: string): Generator<string> {
   if (!fs.existsSync(dir)) return;
@@ -90,7 +126,7 @@ program
 
 program
   .command("run")
-  .argument("<config>", "config file path or site id")
+  .argument("[config]", "config file path or site id (omit to pick from a list)")
   .requiredOption("--flow <name>", "flow to run", "apply")
   .option("--mode <mode>", "step (confirm each page) or auto (confirm only submit)", "step")
   .option("--dry-run", "fill everything, stop before submit", false)
@@ -99,7 +135,24 @@ program
   .option("--no-repair", "disable LLM locator repair (rung 2)")
   .option("--headless", "headless browser (tests only; challenges need a visible browser)", false)
   .description("Run a flow. The final submit ALWAYS asks for your confirmation, in every mode.")
-  .action(async (ref: string, o) => {
+  .action(async (ref: string | undefined, o) => {
+    if (!ref) {
+      // No argument: numbered picker with deadline context from the tracker.
+      if (!stdin.isTTY) throw new BlockedError("No config given. Usage: scholar run <site-id or file>");
+      const entries = allConfigs();
+      if (!entries.length) throw new BlockedError(`No configs found in ${CONFIG_DIRS.join(", ")}`);
+      const apps = loadApps();
+      entries.forEach(({ config }, i) => {
+        const app = apps.find((a) => a.site === config.site.id && a.deadline && a.state !== "submitted");
+        const dl = app?.deadline ? `  deadline in ${timeLeft(app.deadline).human}` : "";
+        console.log(`  ${String(i + 1).padStart(2)}. ${config.site.id.padEnd(22)} flows: ${Object.keys(config.flows).join(",")}${dl}`);
+      });
+      const picked = Number(await ask(`Run which? [1-${entries.length}] `));
+      if (!Number.isInteger(picked) || picked < 1 || picked > entries.length) {
+        throw new BlockedError("No valid selection — nothing run.");
+      }
+      ref = entries[picked - 1].config.site.id;
+    }
     const { config, file } = findConfig(ref);
     const repair = o.repair && (await claudeAvailable());
     if (o.repair && !repair) console.log("note: `claude` CLI not found; locator repair disabled");
@@ -134,6 +187,127 @@ program
     }
     if (result.status === "blocked") process.exitCode = 2;
     if (result.status === "aborted") process.exitCode = 3;
+  });
+
+// --- onboarding & health ---
+const doctorChecks = async () => {
+  const chromiumPath = chromium.executablePath();
+  return {
+    node: Number(process.versions.node.split(".")[0]) >= 20,
+    chromium: fs.existsSync(chromiumPath),
+    profile: fs.existsSync(PROFILE_PATH),
+    configs: allConfigs().length,
+    claude: await claudeAvailable(),
+    display: Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY),
+  };
+};
+
+const installChromium = (): boolean => {
+  // playwright doesn't export cli.js through its exports map; find it on disk
+  // next to the resolved module.
+  const pwDir = path.dirname(createRequire(import.meta.url).resolve("playwright"));
+  const r = spawnSync(process.execPath, [path.join(pwDir, "cli.js"), "install", "chromium"], {
+    stdio: "inherit",
+  });
+  return r.status === 0;
+};
+
+program
+  .command("doctor")
+  .description("Check everything scholar needs and say how to fix what's missing")
+  .action(async () => {
+    const c = await doctorChecks();
+    const row = (ok: boolean, label: string, fix: string) =>
+      console.log(`  ${ok ? "✓" : "✗"} ${label}${ok ? "" : `  → ${fix}`}`);
+    row(c.node, `node ${process.versions.node}`, "install Node 20+");
+    row(c.chromium, "chromium (Playwright)", "scholar start installs it, or: npx playwright install chromium");
+    row(c.profile, `profile (${PROFILE_PATH})`, "scholar start");
+    row(c.configs > 0, `site configs (${c.configs} found)`, `put configs in ${CONFIG_DIRS[1]}`);
+    row(c.claude, "claude CLI (locator repair)", "optional — runs still work, drift won't self-heal");
+    row(c.display, "display (headed browser)", "run from a graphical session");
+    process.exitCode = c.node && c.chromium && c.configs > 0 ? 0 : 1;
+  });
+
+program
+  .command("start")
+  .description("Guided first run: install the browser, set up your profile, watch a demo fill")
+  .action(async () => {
+    // 1. Browser
+    if (!fs.existsSync(chromium.executablePath())) {
+      console.log("Installing the Playwright Chromium browser (one time)...");
+      if (!installChromium()) {
+        throw new BlockedError("Browser install failed. Run manually: npx playwright install chromium");
+      }
+    }
+    // 2. Profile + the universal keys, interviewed inline. Site-specific keys
+    //    are asked lazily by each run's pre-flight, so this stays short.
+    if (initProfile()) console.log(`Created ${PROFILE_PATH}`);
+    const profile = loadProfile();
+    const universal = ["applicant.given_name", "applicant.family_name", "applicant.email", "applicant.country"];
+    const empty = universal.filter((k) => {
+      try {
+        return !resolveKey(profile, k).trim();
+      } catch {
+        return true;
+      }
+    });
+    if (empty.length && stdin.isTTY) {
+      console.log("\nA few basics every application asks for (saved locally, empty to skip):");
+      for (const key of empty) {
+        const v = await ask(`  ${key}: `);
+        if (v) setProfileKey(key, v);
+      }
+    }
+    // 3. Demo against the bundled fixture form — fictional data, zero stakes.
+    const demoConfig = path.join(ROOT, "test", "fixtures", "testsite", "apply.yaml");
+    const demoProfile = path.join(ROOT, "test", "fixtures", "profile.yaml");
+    const demoForm = path.join(ROOT, "test", "fixtures", "testsite", "form.html");
+    if (fs.existsSync(demoConfig) && stdin.isTTY) {
+      const go = await ask("\nWatch a demo fill in a real browser (fictional data, nothing submitted)? [Y/n] ");
+      if (go.toLowerCase() !== "n") {
+        const result = await runFlow(loadConfigFile(demoConfig), {
+          flow: "apply",
+          mode: "auto",
+          dryRun: true,
+          profilePath: demoProfile,
+          inputs: { form_url: `file://${demoForm}` },
+        });
+        console.log(`\nDemo ${result.status} — that review table is the gate every real run stops at.`);
+      }
+    }
+    console.log(
+      [
+        "\nYou're set. Next:",
+        "  scholar docs add ~/path/to/cv.pdf --as cv     # register documents once",
+        "  scholar profile import <your-portfolio-url>   # pull basics from your site",
+        "  scholar run                                   # pick a scholarship and go",
+      ].join("\n"),
+    );
+  });
+
+// --- documents ---
+const docsCmd = program.command("docs").description(`Reusable application documents (${DOCS_DIR})`);
+docsCmd
+  .command("add")
+  .argument("<file>", "document to register (pdf etc.)")
+  .option("--as <name>", "canonical name, e.g. cv, transcript, passport")
+  .description("Copy a document into the docs folder and bind it to a profile key")
+  .action((file: string, o) => {
+    const doc = addDoc(file, o.as);
+    console.log(`${doc.key} -> ${doc.file} (${doc.sizeMB.toFixed(1)} MB)`);
+    if (doc.sizeMB > SIZE_WARN_MB) {
+      console.log(`warn: over ${SIZE_WARN_MB} MB — many portals cap uploads below this`);
+    }
+  });
+docsCmd
+  .command("list")
+  .description("List registered documents and whether their files still exist")
+  .action(() => {
+    const docs = listDocs();
+    if (!docs.length) return console.log("(none — scholar docs add <file> --as cv)");
+    for (const d of docs) {
+      console.log(`  ${d.exists ? "✓" : "✗ MISSING"} ${d.key.padEnd(28)} ${d.file}${d.exists ? ` (${d.sizeMB.toFixed(1)} MB)` : ""}`);
+    }
   });
 
 // --- config subcommands ---
@@ -212,6 +386,45 @@ profileCmd
   });
 profileCmd.command("path").action(() => console.log(PROFILE_PATH));
 profileCmd
+  .command("import")
+  .argument("<url>", "your portfolio/CV page")
+  .description("Propose profile values found on your own website; you confirm each before it saves")
+  .action(async (url: string) => {
+    if (!stdin.isTTY) throw new BlockedError("profile import is interactive — run it in a terminal.");
+    initProfile();
+    console.log(`Reading ${url} ...`);
+    const text = await fetchPageText(url);
+    const candidates: Candidate[] = extractCandidates(text, url);
+    if (await claudeAvailable()) {
+      console.log("Asking claude to extract more (page text only — your profile is never sent)...");
+      for (const c of await llmCandidates(text)) {
+        if (!candidates.some((x) => x.key === c.key)) candidates.push(c);
+      }
+    }
+    if (!candidates.length) return console.log("Nothing extractable found on that page.");
+    const profile = loadProfile();
+    let saved = 0;
+    for (const c of candidates) {
+      let current: string | undefined;
+      try {
+        current = resolveKey(profile, c.key);
+      } catch {
+        current = undefined;
+      }
+      if (current?.trim()) continue; // never overwrite what the user already set
+      const answer = (
+        await ask(`  ${c.key} = "${c.value}"  (${c.evidence})  save? [y/N/e=edit] `)
+      ).toLowerCase();
+      let value = c.value;
+      if (answer === "e") value = await ask(`    ${c.key}: `);
+      else if (answer !== "y") continue;
+      if (!value) continue;
+      setProfileKey(c.key, value);
+      saved++;
+    }
+    console.log(`Saved ${saved} value(s) to ${PROFILE_PATH}. Review with: scholar profile show`);
+  });
+profileCmd
   .command("show")
   .description("List profile keys (values truncated)")
   .action(() => {
@@ -236,15 +449,19 @@ trackCmd
   .argument("<site>", "site id or name")
   .requiredOption("--award <name>", "scholarship/award name")
   .option("--cycle <cycle>", "cycle for recurring awards, e.g. 2026-09")
-  .option("--deadline <iso>", "deadline as ISO instant WITH offset, e.g. 2026-10-07T12:00:00Z")
+  .option("--deadline <when>", 'deadline WITH timezone, e.g. "6 Oct 2026 11:00 UTC" or an ISO instant')
   .option("--tz <zone>", "deadline timezone as the sponsor states it, e.g. 'Pacific Time'")
   .option("--notes <text>")
   .option("--force", "add despite a duplicate warning", false)
   .action((site: string, o) => {
+    const deadline = o.deadline ? parseDeadlineInput(o.deadline) : undefined;
+    if (deadline && deadline !== o.deadline) {
+      console.log(`deadline understood as ${deadline} (${timeLeft(deadline).human} from now)`);
+    }
     const apps = loadApps();
     const app = addApp(
       apps,
-      { site, award: o.award, cycle: o.cycle, deadline: o.deadline, deadline_tz: o.tz, notes: o.notes },
+      { site, award: o.award, cycle: o.cycle, deadline, deadline_tz: o.tz, notes: o.notes },
       o.force,
     );
     saveApps(apps);
@@ -312,17 +529,10 @@ configsCmd
   .command("list")
   .description("List available site configs")
   .action(() => {
-    for (const dir of CONFIG_DIRS) {
-      for (const file of walkYaml(dir)) {
-        try {
-          const config = loadConfigFile(file);
-          console.log(
-            `${config.site.id.padEnd(20)} flows: ${Object.keys(config.flows).join(",")}  ${file}`,
-          );
-        } catch {
-          console.log(`(invalid)            ${file}`);
-        }
-      }
+    for (const { config, file } of allConfigs()) {
+      console.log(
+        `${config.site.id.padEnd(20)} flows: ${Object.keys(config.flows).join(",")}  ${file}`,
+      );
     }
   });
 

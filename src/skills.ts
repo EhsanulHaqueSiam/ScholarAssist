@@ -9,6 +9,7 @@ deterministically and writes artifacts to disk — read paths, not pages.
 
 ## Cost-ordered decision hierarchy (cheapest first)
 
+0. scholar doctor                       — env check: browser, profile, configs
 1. scholar configs list                 — what sites are covered (no browser)
 2. scholar lint <file>                  — validate a config (no browser)
 3. scholar run <site> --flow apply --dry-run --mode auto
@@ -54,8 +55,18 @@ the reason, fix the cause, re-run).
 
 ## Tracker
 
-scholar track add <site> --award "..." [--deadline ISO-with-offset --tz "..."]
+scholar track add <site> --award "..." [--deadline "6 Oct 2026 11:00 UTC" --tz "..."]
+  (deadlines REQUIRE an explicit timezone; naive input is refused)
 scholar track list
 scholar track set <id> <state>   — planned|in_progress|blocked_on_human|
                                    ready_to_submit|submitted|won|rejected
+
+## Profile & documents (human-only data)
+
+Runs pre-flight their needs and interview the human for missing keys — relay
+the questions, never answer them. Point the human at:
+  scholar start                       — guided first run (browser, profile, demo)
+  scholar docs add <file> --as cv     — register CV/transcript/etc for uploads
+  scholar docs list                   — check registered files still exist
+  scholar profile import <url>        — human-confirmed import from their site
 `;

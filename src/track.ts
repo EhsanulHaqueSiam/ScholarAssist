@@ -107,6 +107,24 @@ export function setState(apps: Application[], id: string, state: AppState, notes
   return app;
 }
 
+// Accept human deadline input ("6 Oct 2026 11:00 UTC") as well as ISO, but
+// still refuse anything without an explicit timezone — a naive deadline is a
+// missed deadline. Returns a normalized ISO instant.
+export function parseDeadlineInput(input: string): string {
+  const hasZone = /\b(UTC|GMT)\b/i.test(input) || /[Zz]$|[+-]\d{2}:?\d{2}$/.test(input.trim());
+  if (!hasZone) {
+    throw new BlockedError(
+      `Deadline "${input}" has no explicit timezone. Say "6 Oct 2026 11:00 UTC" or ` +
+        `"2026-10-07T23:59:00-07:00" — a deadline without one is a missed deadline waiting to happen.`,
+    );
+  }
+  const t = new Date(input);
+  if (Number.isNaN(t.getTime())) {
+    throw new BlockedError(`Could not parse deadline "${input}". Try "6 Oct 2026 11:00 UTC".`);
+  }
+  return t.toISOString();
+}
+
 export function timeLeft(deadline: string): { ms: number; human: string } {
   const ms = new Date(deadline).getTime() - Date.now();
   const abs = Math.abs(ms);

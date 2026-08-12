@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,6 +13,7 @@ import {
   loadProfile,
   resolveKey,
   resolveTemplate,
+  setProfileKey,
   type Profile,
 } from "./profile.js";
 import type { PageDef, SiteConfig, Step, Target } from "./schema.js";
@@ -69,6 +71,47 @@ async function ask(question: string, confirm?: RunOptions["confirm"]): Promise<s
   return answer.trim();
 }
 
+// Everything a flow will need from the profile, computed WITHOUT a browser.
+// Drives the pre-flight screen so missing data is resolved on one screen
+// before any page opens — never as a mid-run surprise.
+export interface Need {
+  key: string;
+  kind: "file" | "text";
+}
+
+export function flowNeeds(config: SiteConfig, flowName: string): Need[] {
+  const flow = config.flows[flowName];
+  if (!flow) return [];
+  const needs: Need[] = [];
+  const add = (key: string, kind: Need["kind"]) => {
+    if (!needs.some((n) => n.key === key)) needs.push({ key, kind });
+  };
+  for (const p of flow.pages) {
+    for (const s of p.steps ?? []) {
+      if (s.action === "fill_fields") {
+        for (const k of s.fields ?? []) add(k, config.fields?.[k]?.kind === "file" ? "file" : "text");
+      } else if ((s.action === "fill" || s.action === "select") && s.value) {
+        const m = /profile\.([\w.]+)/.exec(s.value);
+        if (m) add(m[1], "text");
+      } else if (s.action === "upload" && s.file) {
+        const m = /profile\.([\w.]+)/.exec(s.file);
+        if (m) add(m[1], "file");
+      }
+    }
+  }
+  return needs;
+}
+
+// Fire-and-forget desktop notification for moments that need a human (review
+// gate, blocked run) — long forms shouldn't require staring at a terminal.
+function notify(message: string): void {
+  try {
+    spawn("notify-send", ["scholar", message], { detached: true, stdio: "ignore" }).unref();
+  } catch {
+    /* no notifier — fine */
+  }
+}
+
 function makeRunDir(base?: string): string {
   const dir =
     base ??
@@ -96,7 +139,7 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
     }
   }
 
-  const profile: Profile = loadProfile(opts.profilePath);
+  let profile: Profile = loadProfile(opts.profilePath);
   const runDir = makeRunDir(opts.runDir);
   const auditPath = path.join(runDir, "audit.jsonl");
   const audit = (entry: Record<string, unknown>) =>
@@ -105,6 +148,58 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
   const fills: FillRecord[] = [];
   const patches: ProposedPatch[] = [];
   const rungsUsed: number[] = [];
+
+  // Pre-flight: resolve everything the flow needs on ONE screen before any
+  // browser opens. Missing keys are interviewed inline — the human types the
+  // value, it's saved to the profile — so the profile builds itself at the
+  // point of need instead of dying one key at a time mid-run.
+  const needs = flowNeeds(config, opts.flow);
+  const missingOf = (p: Profile) =>
+    needs.filter((n) => {
+      try {
+        const v = resolveKey(p, n.key);
+        return !v.trim() || (n.kind === "file" && !fs.existsSync(expandHome(v)));
+      } catch {
+        return true;
+      }
+    });
+  let missing = missingOf(profile);
+  if (needs.length) {
+    console.log(`\nPre-flight — ${config.site.id} ${opts.flow} needs:`);
+    for (const n of needs) {
+      const miss = missing.some((m) => m.key === n.key);
+      console.log(`  ${miss ? "✗" : "✓"} ${n.key}${n.kind === "file" ? "  (file)" : ""}`);
+    }
+  }
+  // Prompting is safe only with the test hook, or a real TTY on a headed run.
+  const interactive = Boolean(opts.confirm) || (stdin.isTTY === true && !opts.headless);
+  if (missing.length && interactive) {
+    console.log(`\nEnter the missing values now (saved to your profile; leave empty to skip):`);
+    for (const n of missing) {
+      const q = n.kind === "file" ? `  ${n.key} — path to the file: ` : `  ${n.key}: `;
+      const answer = (await ask(q, opts.confirm)).trim();
+      if (!answer) continue;
+      if (n.kind === "file" && !fs.existsSync(expandHome(answer))) {
+        console.log(`    no such file: ${answer} — skipped (tip: scholar docs add <file>)`);
+        continue;
+      }
+      setProfileKey(n.key, answer, opts.profilePath);
+      audit({ action: "preflight-save", key: n.key, source: "user-typed" });
+    }
+    profile = loadProfile(opts.profilePath);
+    missing = missingOf(profile);
+  }
+  if (missing.length) {
+    const reason =
+      `Profile is missing: ${missing.map((m) => m.key).join(", ")}. ` +
+      `Add them and re-run (scholar docs add for files).`;
+    fs.writeFileSync(
+      path.join(runDir, "summary.json"),
+      JSON.stringify({ status: "blocked", site: config.site.id, flow: opts.flow, reason, fills, patches, rungsUsed }, null, 2),
+    );
+    audit({ action: "finish", status: "blocked", reason });
+    return { status: "blocked", fills, runDir, reason, patches, rungsUsed };
+  }
 
   const engine = await Engine.launch({
     headless: opts.headless,
@@ -192,6 +287,8 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
     };
     fills.push(record);
     audit({ action: "fill", ...record });
+    // Live narration — the trust-builder for a human watching the browser.
+    console.log(`  ✓ ${field}  (${source}${resolved.rung > 0 ? ", fallback locator" : ""})`);
   };
 
   const doStep = async (pageDef: PageDef, step: Step) => {
@@ -261,7 +358,9 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
   const reviewTable = () => {
     const rows = fills.map((f) => {
       const shown = f.value.length > 60 ? f.value.slice(0, 57) + "..." : f.value;
-      return `  ${f.field.padEnd(28)} ${shown}  (${f.source}${f.rung > 0 ? `, fallback locator` : ""})`;
+      const max = config.fields?.[f.field]?.max_chars;
+      const count = max ? `  [${f.value.length}/${max} chars]` : "";
+      return `  ${f.field.padEnd(28)} ${shown}  (${f.source}${f.rung > 0 ? `, fallback locator` : ""})${count}`;
     });
     return rows.length ? rows.join("\n") : "  (nothing filled)";
   };
@@ -299,6 +398,7 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
         console.log(reviewTable());
         console.log(`Screenshots and audit log: ${runDir}`);
         if (opts.dryRun) return await finish("dry-run", "stopped before submit (--dry-run)");
+        if (!opts.headless) notify(`${config.site.id}: ready for your review — the submit is yours`);
         const answer = await ask(`Type "submit" to submit, anything else to abort: `, opts.confirm);
         if (answer !== "submit") return await finish("aborted", "user declined at review gate");
       } else if (opts.mode === "step") {
@@ -333,6 +433,7 @@ export async function runFlow(config: SiteConfig, opts: RunOptions): Promise<Run
   } catch (err) {
     if (err instanceof BlockedError || err instanceof StepError) {
       await page.screenshot({ path: path.join(runDir, "blocked.png"), fullPage: true }).catch(() => {});
+      if (!opts.headless) notify(`${config.site.id}: blocked — ${err.message.slice(0, 80)}`);
       return await finish("blocked", err.message);
     }
     await engine.close().catch(() => {});

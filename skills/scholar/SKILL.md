@@ -1,23 +1,19 @@
 ---
 name: scholar
 description: >-
-  Config-driven scholarship application assistant. Use when the user wants to
-  find, track, fill, or submit scholarship applications, record or repair a
-  site config, or check application deadlines. The CLI fills forms from the
-  user's local profile; a human always reviews and confirms every submission.
+  Scholarship application assistant (scholar CLI): fills portal forms from the
+  user's local profile via shared site configs; a human reviews and confirms
+  every submission. Use when the user wants to find, track, or apply to
+  scholarships, fill an application form, check or add deadlines, or record,
+  lint, verify, repair, or import a site config.
 allowed-tools: Bash(scholar:*)
 ---
 
 # scholar
 
-This file is a discovery stub. The full, version-matched guide is served by
-the binary itself so it can never drift from the commands that will run:
+Run `scholar skills get core` first and follow its cost-ordered hierarchy —
+the binary serves the version-matched guide.
 
-```
-scholar skills get core
-```
-
-Run that first, then follow its cost-ordered hierarchy. Two rules survive
-even if you read nothing else: never bypass a CAPTCHA or 2FA (the human
-solves challenges in the headed browser), and never answer the submit
-review gate yourself — it belongs to the human.
+Hard rules:
+- Never answer the submit review gate; it belongs to the human.
+- Never bypass CAPTCHA or 2FA; the human handles challenges in the headed browser.
